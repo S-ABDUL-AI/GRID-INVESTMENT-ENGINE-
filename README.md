@@ -2,6 +2,8 @@
 
 **Benefit-cost optimization and capital portfolio planning for utility infrastructure investment**
 
+[![Open App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://grid-investment-prioritization-engine-hsyvnqi9iesad5met5pw7v.streamlit.app/)
+
 ---
 
 ## Business Problem
@@ -111,7 +113,7 @@ producing P10–P90 confidence intervals and probability of positive BCR.
 ## Run Locally
 
 ```bash
-git clone https://github.com/S-ABDUL-AI/grid-investment-engine
+git clone https://github.com/S-ABDUL-AI/grid-investment-engine.git
 cd grid-investment-engine
 pip install -r requirements.txt
 streamlit run app.py
@@ -129,6 +131,16 @@ subject to a budget constraint, accounting for uncertainty in both costs and out
 
 This connection — between development economics methodology and utility asset
 management — reflects the author's background in both fields.
+
+---
+
+## Related Energy Portfolio Tools
+
+| Tool | Description | Live App |
+|------|-------------|----------|
+| California Grid Asset Risk Dashboard | Wildfire risk prediction and asset failure modeling for electric utility infrastructure | [Open App](https://california-grid-asset-risk-wildfire-vulnerability-dashboard-hm.streamlit.app/) |
+| California Grid Demand Forecast | Time series load forecasting and EV/solar scenario planning for electric utility operations | [Open App](https://california-grid-demand-forecast-35hscpx2oxi3y7glsgkphj.streamlit.app/) |
+| Oil Price Shock Transmission Dashboard | Interactive econometric tool exploring oil price shock transmission into Ghana public debt dynamics | [Open App](https://oil-price-shock-transmission-9xazdnfk5tnuaffap34ysp.streamlit.app/) |
 
 ---
 
