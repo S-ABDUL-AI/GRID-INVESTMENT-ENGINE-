@@ -1,7 +1,6 @@
 # 📊 Grid Investment Prioritization Engine
 
-**Benefit-cost optimization and capital portfolio planning for utility infrastructure investment**  
-Built by Sherriff Abdul-Hamid | poverty360.org
+**Benefit-cost optimization and capital portfolio planning for utility infrastructure investment**
 
 ---
 
@@ -135,6 +134,6 @@ management — reflects the author's background in both fields.
 
 ## Author
 
-**Sherriff Abdul-Hamid**  
-Development Economist · Data Scientist · Public Infrastructure Analytics  
-[poverty360.org](https://poverty360.org) | [LinkedIn](https://www.linkedin.com/in/abdul-hamid-sherriff-08583354/)
+**Sherriff Abdul-Hamid**
+Data Scientist · Energy Economist · Public Infrastructure Analytics
+[poverty360.org](https://poverty360.org) | [LinkedIn](https://www.linkedin.com/in/abdul-hamid-sherriff-08583354/) | [GitHub](https://github.com/S-ABDUL-AI)
