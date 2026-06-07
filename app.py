@@ -15,47 +15,111 @@ from scipy.optimize import linprog
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+import html
+from datetime import date
+from io import BytesIO
 import warnings
 warnings.filterwarnings("ignore")
 
+# ── DESIGN TOKENS ─────────────────────────────────────────────────────────────
+NAVY      = "#0A1F44"
+NAVY_MID  = "#152B5C"
+GOLD      = "#C9A84C"
+GOLD_LT   = "#E8C97A"
+INK       = "#1A1A1A"
+BODY      = "#2C3E50"
+MUTED     = "#6B7280"
+RED       = "#C8382A"
+AMBER     = "#B8560A"
+GREEN     = "#1A7A2E"
+TEAL      = "#0E7490"
+RULE      = "#E2E6EC"
+OFF_WHITE = "#F8F6F1"
+
 # ── PAGE CONFIG ───────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="Grid Investment Prioritization",
-    page_icon="📊",
+    page_title="Grid Investment Prioritization Engine",
+    page_icon="⚡",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
 # ── CUSTOM CSS ────────────────────────────────────────────────────────────────
-st.markdown("""
+st.markdown(f"""
 <style>
-    .main { background-color: #f8f9fa; }
-    .kpi-card {
-        background: white; border-radius: 10px; padding: 18px;
-        text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-        border-left: 4px solid #1F3864;
-    }
-    .kpi-value { font-size: 1.9rem; font-weight: 700; color: #1F3864; margin: 0; }
-    .kpi-label { font-size: 0.8rem; color: #666; margin: 0;
-                 text-transform: uppercase; letter-spacing: 0.05em; }
-    .kpi-green { border-left-color: #388e3c; }
-    .kpi-amber { border-left-color: #f57c00; }
-    .kpi-red   { border-left-color: #d32f2f; }
-    .section-header {
-        font-size: 1.05rem; font-weight: 600; color: #1F3864;
-        border-bottom: 2px solid #1F3864; padding-bottom: 5px;
-        margin-bottom: 14px; margin-top: 18px;
-    }
-    .insight-box {
-        background: #e8f0fe; border-left: 4px solid #1F3864;
-        padding: 12px 16px; border-radius: 6px;
-        font-size: 0.92rem; margin: 10px 0;
-    }
-    .formula-box {
-        background: #f1f3f4; border-radius: 6px;
-        padding: 12px 16px; font-family: monospace;
-        font-size: 0.88rem; margin: 8px 0;
-    }
+  @import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;600;700&display=swap');
+  html, body, [class*="css"] {{
+    font-family: 'Source Sans 3', sans-serif; background: {OFF_WHITE};
+  }}
+  [data-testid="stSidebar"] {{
+    background: linear-gradient(180deg, {NAVY} 0%, {NAVY_MID} 100%);
+  }}
+  [data-testid="stSidebar"] * {{ color: #D8E2F0 !important; }}
+  [data-testid="stSidebar"] .stSlider label,
+  [data-testid="stSidebar"] .stCheckbox label,
+  [data-testid="stSidebar"] .stRadio label,
+  [data-testid="stSidebar"] .stMultiSelect label {{
+    color: #E8EEF8 !important; font-weight: 600 !important;
+  }}
+  .hero-wrap {{
+    background: linear-gradient(135deg, {NAVY} 0%, {NAVY_MID} 65%, #1E3A6E 100%);
+    border-left: 6px solid {GOLD}; border-radius: 6px;
+    padding: 34px 40px 28px; margin-bottom: 22px;
+  }}
+  .hero-eye   {{ font-size: 11px; font-weight: 700; letter-spacing: 2.5px;
+                 color: {GOLD}; text-transform: uppercase; margin-bottom: 10px; }}
+  .hero-title {{ font-size: 26px; font-weight: 700; color: #FFFFFF;
+                 line-height: 1.3; margin-bottom: 10px; }}
+  .hero-sub   {{ font-size: 13.5px; color: #B0BFD8; line-height: 1.65; max-width: 920px; }}
+  .sec-lbl {{ font-size: 10px; font-weight: 700; letter-spacing: 2px;
+              color: {GOLD}; text-transform: uppercase; margin-bottom: 3px; }}
+  .sec-ttl {{ font-size: 19px; font-weight: 700; color: {NAVY}; margin-bottom: 3px; }}
+  .sec-sub {{ font-size: 13px; color: {MUTED}; margin-bottom: 14px; }}
+  .kpi-card {{
+    background: #FFFFFF; border: 1px solid {RULE}; border-top: 3px solid {NAVY};
+    border-radius: 4px; padding: 16px 18px; text-align: center;
+  }}
+  .kpi-value {{ font-size: 1.85rem; font-weight: 700; color: {NAVY}; margin: 0; line-height: 1.1; }}
+  .kpi-label {{ font-size: 10px; font-weight: 700; color: {MUTED}; margin: 6px 0 0;
+                text-transform: uppercase; letter-spacing: 1px; }}
+  .kpi-green {{ border-top-color: {GREEN}; }}
+  .kpi-amber {{ border-top-color: {AMBER}; }}
+  .kpi-red   {{ border-top-color: {RED}; }}
+  .section-header {{
+    font-size: 11px; font-weight: 700; color: {NAVY}; letter-spacing: 1.5px;
+    text-transform: uppercase; border-bottom: 2px solid {GOLD};
+    padding-bottom: 6px; margin-bottom: 14px; margin-top: 18px;
+  }}
+  .insight-box {{
+    background: #F0F4FF; border-left: 4px solid {NAVY}; border-radius: 4px;
+    padding: 14px 18px; font-size: 13px; color: {BODY}; line-height: 1.65; margin: 12px 0;
+  }}
+  .formula-box {{
+    background: #FFFFFF; border: 1px solid {RULE}; border-left: 4px solid {GOLD};
+    border-radius: 4px; padding: 14px 18px; font-family: 'Courier New', monospace;
+    font-size: 12.5px; color: {BODY}; margin: 10px 0; line-height: 1.8;
+  }}
+  .report-card {{
+    background: #FFFFFF; border: 1px solid {RULE}; border-left: 5px solid {GOLD};
+    border-radius: 6px; padding: 20px 24px; margin-bottom: 24px;
+    box-shadow: 0 2px 12px rgba(10, 31, 68, 0.06);
+  }}
+  .report-title {{ font-size: 16px; font-weight: 700; color: {NAVY}; margin-bottom: 4px; }}
+  .report-sub   {{ font-size: 13px; color: {MUTED}; line-height: 1.55; margin-bottom: 12px; }}
+  .report-loc   {{ font-size: 11.5px; color: {AMBER}; font-weight: 600;
+                   letter-spacing: 0.3px; margin-bottom: 10px; }}
+  .byline {{
+    background: {NAVY}; border-radius: 4px; padding: 16px 22px;
+    font-size: 11.5px; color: #B0BFD8; line-height: 1.8; margin-top: 28px;
+  }}
+  .byline a {{ color: {GOLD}; text-decoration: none; }}
+  button[data-baseweb="tab"] {{
+    font-weight: 600 !important; font-size: 13px !important; color: {NAVY} !important;
+  }}
+  div[data-testid="stDownloadButton"] > button {{
+    background: {NAVY}; color: #FFFFFF; border: none; border-radius: 4px;
+    font-weight: 600; letter-spacing: 0.3px;
+  }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -187,17 +251,258 @@ def run_monte_carlo(projects_df, selected_ids, n_sims=2000, seed=99):
     return pd.DataFrame(results)
 
 
+def _apply_chart_theme(fig, height=None):
+    layout = dict(
+        font=dict(family="Source Sans 3, sans-serif", color=BODY, size=12),
+        paper_bgcolor="#FFFFFF",
+        plot_bgcolor="#FAFBFC",
+        margin=dict(l=12, r=12, t=36, b=40),
+    )
+    if height:
+        layout["height"] = height
+    fig.update_layout(**layout)
+    fig.update_xaxes(gridcolor=RULE, zerolinecolor=RULE)
+    fig.update_yaxes(gridcolor=RULE, zerolinecolor=RULE)
+    return fig
+
+
+def greedy_optimize(df_cand, budget, obj_col, budget_col="cost_usd"):
+    df_sorted = df_cand.sort_values(obj_col, ascending=False).copy()
+    selected, spent = [], 0
+    for _, row in df_sorted.iterrows():
+        if spent + row[budget_col] <= budget:
+            selected.append(row["project_id"])
+            spent += row[budget_col]
+    return selected
+
+
+OBJ_MAP = {
+    "Maximize Risk Reduction":      "risk_per_dollar",
+    "Maximize BCR":                 "bcr",
+    "Maximize Customers Protected": "customers_protected",
+}
+
+
+def build_scenarios(dff, scenario_budget, prioritize_by, include_reg):
+    obj_col = OBJ_MAP[prioritize_by]
+
+    scen_nothing = {
+        "name": "Do Nothing", "ids": [], "cost": 0,
+        "risk_red": 0, "customers": 0, "bcr": 0,
+    }
+
+    if include_reg:
+        reg_projects = dff[dff["regulatory_required"]].copy()
+        reg_cost = reg_projects["cost_usd"].sum()
+        remaining = scenario_budget - reg_cost
+        opt_cand = dff[~dff["regulatory_required"]].copy()
+        opt_ids = reg_projects["project_id"].tolist()
+        if remaining > 0:
+            opt_ids += greedy_optimize(opt_cand, remaining, obj_col)
+    else:
+        opt_ids = greedy_optimize(dff, scenario_budget, obj_col)
+
+    opt_sel = dff[dff["project_id"].isin(opt_ids)]
+    scen_opt = {
+        "name": "Optimized Portfolio",
+        "ids": opt_ids,
+        "cost": opt_sel["cost_usd"].sum(),
+        "risk_red": opt_sel["risk_reduction_usd"].sum(),
+        "customers": opt_sel["customers_protected"].sum(),
+        "bcr": (
+            opt_sel["total_benefit_usd"].sum() / opt_sel["cost_usd"].sum()
+            if opt_sel["cost_usd"].sum() > 0 else 0
+        ),
+    }
+
+    reg_sel = dff[dff["regulatory_required"]]
+    scen_reg = {
+        "name": "Regulatory Minimum",
+        "ids": reg_sel["project_id"].tolist(),
+        "cost": reg_sel["cost_usd"].sum(),
+        "risk_red": reg_sel["risk_reduction_usd"].sum(),
+        "customers": reg_sel["customers_protected"].sum(),
+        "bcr": (
+            reg_sel["total_benefit_usd"].sum() / reg_sel["cost_usd"].sum()
+            if reg_sel["cost_usd"].sum() > 0 else 0
+        ),
+    }
+
+    return [scen_nothing, scen_reg, scen_opt], opt_sel, opt_ids, scen_opt, scen_reg
+
+
+def _scenario_summary_rows(scenarios, dff):
+    rows = []
+    baseline_risk = dff["risk_reduction_usd"].sum()
+    for s in scenarios:
+        roi = (s["risk_red"] / s["cost"] * 100) if s["cost"] > 0 else 0
+        pct = (s["risk_red"] / baseline_risk * 100) if baseline_risk > 0 else 0
+        rows.append({
+            "Scenario": s["name"],
+            "Projects Funded": len(s["ids"]),
+            "Total Investment": f"${s['cost']/1e6:.1f}M",
+            "Risk Reduction": f"${s['risk_red']/1e6:.1f}M",
+            "% of Max Risk Red.": f"{pct:.1f}%",
+            "Portfolio BCR": f"{s['bcr']:.2f}x",
+            "ROI (Risk/Cost)": f"{roi:.0f}%",
+            "Customers Protected": f"{s['customers']:,}",
+        })
+    return rows
+
+
+def _build_report_html(dff, scenarios, scen_opt, scen_reg, opt_ids, meta):
+    summary = _scenario_summary_rows(scenarios, dff)
+    top_projects = (
+        dff[dff["project_id"].isin(opt_ids)]
+        .sort_values("bcr", ascending=False)
+        .head(12)
+    )
+    rows_html = ""
+    for row in summary:
+        rows_html += (
+            f"<tr><td>{html.escape(str(row['Scenario']))}</td>"
+            f"<td>{row['Projects Funded']}</td>"
+            f"<td>{row['Total Investment']}</td>"
+            f"<td>{row['Risk Reduction']}</td>"
+            f"<td>{row['Portfolio BCR']}</td></tr>"
+        )
+    proj_html = ""
+    for r in top_projects.itertuples(index=False):
+        proj_html += (
+            f"<tr><td>{html.escape(str(r.project_id))}</td>"
+            f"<td>{html.escape(str(r.project_name))}</td>"
+            f"<td>{html.escape(str(r.category))}</td>"
+            f"<td>${r.cost_usd:,.0f}</td>"
+            f"<td>{r.bcr:.2f}x</td>"
+            f"<td>${r.risk_reduction_usd:,.0f}</td></tr>"
+        )
+    return f"""<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<title>Grid Investment Executive Brief</title>
+<style>
+  body {{ font-family: 'Segoe UI', Arial, sans-serif; color: {BODY}; margin: 40px; }}
+  h1 {{ color: {NAVY}; font-size: 24px; margin-bottom: 4px; }}
+  .eye {{ color: {GOLD}; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; }}
+  .meta {{ color: {MUTED}; font-size: 13px; margin-bottom: 24px; }}
+  h2 {{ color: {NAVY}; font-size: 16px; border-bottom: 2px solid {GOLD}; padding-bottom: 4px; }}
+  table {{ width: 100%; border-collapse: collapse; font-size: 12.5px; margin: 12px 0 24px; }}
+  th {{ background: {NAVY}; color: {GOLD}; text-align: left; padding: 8px 10px; }}
+  td {{ border-bottom: 1px solid {RULE}; padding: 7px 10px; }}
+  tr:nth-child(even) td {{ background: #F8F9FC; }}
+  .note {{ background: #FFFBF0; border-left: 4px solid {GOLD}; padding: 12px 14px;
+            font-size: 12.5px; line-height: 1.6; }}
+  .footer {{ margin-top: 28px; font-size: 11px; color: {MUTED}; }}
+</style></head><body>
+<p class="eye">Grid Investment Prioritization Engine · Executive Brief</p>
+<h1>Portfolio Decision Support Report</h1>
+<p class="meta">Generated {date.today().isoformat()} · Budget ${meta['budget_m']:.0f}M ·
+Objective: {html.escape(meta['objective'])} · {meta['project_count']} projects in scope</p>
+<h2>Scenario Comparison</h2>
+<table><thead><tr><th>Scenario</th><th>Projects</th><th>Investment</th>
+<th>Risk Reduction</th><th>BCR</th></tr></thead><tbody>{rows_html}</tbody></table>
+<h2>Optimized Portfolio — Top Projects</h2>
+<table><thead><tr><th>ID</th><th>Project</th><th>Category</th>
+<th>Cost</th><th>BCR</th><th>Risk Reduction</th></tr></thead><tbody>{proj_html}</tbody></table>
+<div class="note"><strong>Key insight:</strong> The optimized portfolio delivers
+${scen_opt['risk_red']/1e6:.1f}M in risk reduction at ${scen_opt['cost']/1e6:.1f}M invested
+(BCR {scen_opt['bcr']:.2f}x), versus ${scen_reg['risk_red']/1e6:.1f}M under the regulatory minimum.
+Methodology aligns with CPUC Risk-Based Decision-Making (RBDM) expected-value framework.</div>
+<p class="footer">Built by Sherriff Abdul-Hamid · poverty360.org · Simulated SoCal utility portfolio.
+Decision support only — not a regulatory filing.</p>
+</body></html>"""
+
+
+def _build_report_pdf(dff, scenarios, scen_opt, scen_reg, opt_ids, meta):
+    from reportlab.lib import colors as rl_colors
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib.units import inch
+    from reportlab.pdfgen import canvas
+
+    buf = BytesIO()
+    w, h = letter
+    margin = 0.75 * inch
+    c = canvas.Canvas(buf, pagesize=letter)
+    y = h - margin
+
+    c.setFillColor(rl_colors.HexColor(NAVY))
+    c.setFont("Helvetica-Bold", 20)
+    c.drawString(margin, y, "Grid Investment Executive Brief")
+    y -= 22
+    c.setFillColor(rl_colors.HexColor(MUTED))
+    c.setFont("Helvetica", 10)
+    c.drawString(
+        margin, y,
+        f"Generated {date.today().isoformat()} · Budget ${meta['budget_m']:.0f}M · "
+        f"{meta['project_count']} projects in scope",
+    )
+    y -= 28
+
+    c.setFillColor(rl_colors.HexColor(NAVY))
+    c.setFont("Helvetica-Bold", 12)
+    c.drawString(margin, y, "Scenario Comparison")
+    y -= 16
+    c.setFont("Helvetica", 9.5)
+    for s in scenarios:
+        c.drawString(
+            margin, y,
+            f"{s['name']}: {len(s['ids'])} projects · "
+            f"${s['cost']/1e6:.1f}M invested · "
+            f"${s['risk_red']/1e6:.1f}M risk reduction · BCR {s['bcr']:.2f}x",
+        )
+        y -= 13
+        if y < margin + 80:
+            c.showPage()
+            y = h - margin
+
+    y -= 8
+    c.setFont("Helvetica-Bold", 12)
+    c.setFillColor(rl_colors.HexColor(NAVY))
+    c.drawString(margin, y, "Optimized Portfolio — Top Projects")
+    y -= 16
+    c.setFont("Helvetica-Bold", 9)
+    c.drawString(margin, y, "ID")
+    c.drawString(margin + 55, y, "Project")
+    c.drawString(margin + 260, y, "BCR")
+    c.drawString(w - margin - 90, y, "Cost")
+    y -= 12
+    c.setFont("Helvetica", 9)
+    top_projects = (
+        dff[dff["project_id"].isin(opt_ids)]
+        .sort_values("bcr", ascending=False)
+        .head(14)
+    )
+    for r in top_projects.itertuples(index=False):
+        c.drawString(margin, y, str(r.project_id))
+        c.drawString(margin + 55, y, str(r.project_name)[:34])
+        c.drawString(margin + 260, y, f"{r.bcr:.2f}x")
+        c.drawRightString(w - margin, y, f"${r.cost_usd/1e6:.1f}M")
+        y -= 11
+        if y < margin + 40:
+            break
+
+    y -= 10
+    c.setFillColor(rl_colors.HexColor(MUTED))
+    c.setFont("Helvetica", 8.5)
+    c.drawString(
+        margin, margin - 2,
+        "Decision support brief · Sherriff Abdul-Hamid · poverty360.org · "
+        "Simulated portfolio aligned to CPUC RBDM framework.",
+    )
+    c.save()
+    return buf.getvalue()
+
+
 # ── LOAD DATA ─────────────────────────────────────────────────────────────────
 df = generate_projects()
 
 CATEGORIES = sorted(df["category"].unique())
 REGIONS    = sorted(df["region"].unique())
 CAT_COLORS = {
-    "Wildfire Mitigation":    "#d32f2f",
-    "Grid Hardening":         "#1F3864",
-    "Predictive Maintenance": "#388e3c",
+    "Wildfire Mitigation":    RED,
+    "Grid Hardening":         NAVY,
+    "Predictive Maintenance": GREEN,
     "Undergrounding":         "#6a1b9a",
-    "Substation Upgrades":    "#0277bd",
+    "Substation Upgrades":    TEAL,
     "Vegetation Management":  "#558b2f",
     "Climate Resilience":     "#00838f",
 }
@@ -205,9 +510,18 @@ CAT_COLORS = {
 
 # ── SIDEBAR ───────────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.markdown("### 📊 Grid Investment Engine")
-    st.markdown("**Benefit-Cost Optimization for Utility Capital Decisions**")
+    st.markdown("### ⚡ Investment Engine")
+    st.markdown("**Benefit-Cost Optimization · CPUC RBDM**")
     st.markdown("---")
+
+    with st.expander("How to use this app", expanded=False):
+        st.markdown(
+            """
+1. Set **filters** and **capital budget** in this sidebar.
+2. Review tabs for portfolio analytics, scenarios, BCA, and Monte Carlo.
+3. Download the **Executive Portfolio Brief** from the gold report card below the hero banner.
+"""
+        )
 
     st.markdown("**Filter Projects**")
     cat_filter = st.multiselect("Category", CATEGORIES, default=CATEGORIES)
@@ -218,14 +532,27 @@ with st.sidebar:
     st.markdown("**Discount Rate (NPV)**")
     discount_rate = st.slider("Rate (%)", 3.0, 12.0, 7.0, 0.5) / 100
 
-    st.markdown("---")
     st.markdown("**Minimum BCR Threshold**")
     min_bcr = st.slider("Min BCR", 0.5, 4.0, 1.0, 0.1)
 
     st.markdown("---")
-    st.caption("Built by [Sherriff Abdul-Hamid](https://poverty360.org)  \n"
-               "Data: Simulated SoCal utility projects  \n"
-               "Method: Expected Value Optimization")
+    st.markdown("**Scenario Settings**")
+    scenario_budget = st.slider(
+        "Capital Budget ($M)",
+        min_value=5.0, max_value=200.0, value=50.0, step=5.0,
+    ) * 1e6
+    prioritize_by = st.radio(
+        "Optimization Objective",
+        list(OBJ_MAP.keys()),
+    )
+    include_reg = st.checkbox("Always include regulatory-required projects", value=True)
+
+    st.markdown("---")
+    st.caption(
+        "Built by [Sherriff Abdul-Hamid](https://poverty360.org)  \n"
+        "Data: Simulated SoCal utility projects  \n"
+        "Method: Expected Value Optimization"
+    )
 
 
 # ── FILTERS ───────────────────────────────────────────────────────────────────
@@ -238,15 +565,84 @@ if reg_req:
     mask &= df["regulatory_required"]
 dff = df[mask].copy()
 
-
-# ── HEADER ────────────────────────────────────────────────────────────────────
-st.markdown("## 📊 Grid Investment Prioritization Engine")
-st.markdown(
-    "Expected-value optimization for utility infrastructure capital decisions — "
-    "ranking investments by risk reduction per dollar to maximize grid resilience "
-    "within budget constraints. Aligned to CPUC Risk-Based Decision-Making framework."
+scenarios, opt_sel, opt_ids, scen_opt, scen_reg = build_scenarios(
+    dff, scenario_budget, prioritize_by, include_reg,
 )
-st.markdown("---")
+report_meta = {
+    "budget_m": scenario_budget / 1e6,
+    "objective": prioritize_by,
+    "project_count": len(dff),
+}
+
+
+# ── HERO ──────────────────────────────────────────────────────────────────────
+st.markdown(f"""
+<div class="hero-wrap">
+  <div class="hero-eye">Utility Infrastructure · Portfolio Analytics</div>
+  <div class="hero-title">Grid Investment Prioritization Engine</div>
+  <div class="hero-sub">
+    Expected-value optimization for utility capital decisions — ranking investments by
+    risk reduction per dollar to maximize grid resilience within budget constraints.
+    Aligned to the CPUC Risk-Based Decision-Making (RBDM) framework.
+  </div>
+</div>
+""", unsafe_allow_html=True)
+
+# ── EXECUTIVE REPORT DOWNLOAD ─────────────────────────────────────────────────
+st.markdown('<div class="report-card">', unsafe_allow_html=True)
+st.markdown(
+    '<div class="report-title">📄 Executive Portfolio Brief</div>'
+    '<div class="report-sub">One-page decision brief with scenario comparison and '
+    'top optimized projects — ready for stakeholder review.</div>'
+    '<div class="report-loc">↓ Download location: use the buttons below this card</div>',
+    unsafe_allow_html=True,
+)
+dl1, dl2, dl3 = st.columns(3)
+report_slug = f"grid_investment_brief_{int(scenario_budget/1e6)}M"
+with dl1:
+    try:
+        pdf_bytes = _build_report_pdf(
+            dff, scenarios, scen_opt, scen_reg, opt_ids, report_meta,
+        )
+        st.download_button(
+            "Download report (.pdf)",
+            data=pdf_bytes,
+            file_name=f"{report_slug}.pdf",
+            mime="application/pdf",
+            use_container_width=True,
+        )
+    except ModuleNotFoundError:
+        st.caption("PDF requires reportlab on deploy.")
+with dl2:
+    html_bytes = _build_report_html(
+        dff, scenarios, scen_opt, scen_reg, opt_ids, report_meta,
+    ).encode("utf-8")
+    st.download_button(
+        "Download report (.html)",
+        data=html_bytes,
+        file_name=f"{report_slug}.html",
+        mime="text/html",
+        use_container_width=True,
+    )
+with dl3:
+    csv_bytes = dff.to_csv(index=False).encode("utf-8")
+    st.download_button(
+        "Download portfolio (.csv)",
+        data=csv_bytes,
+        file_name="grid_investment_portfolio.csv",
+        mime="text/csv",
+        use_container_width=True,
+    )
+st.markdown("</div>", unsafe_allow_html=True)
+
+st.markdown(
+    f'<div class="sec-lbl">Active scenario</div>'
+    f'<div class="sec-sub">Budget <strong>${scenario_budget/1e6:.0f}M</strong> · '
+    f'{len(opt_ids)} projects selected · '
+    f'<strong>${scen_opt["risk_red"]/1e6:.1f}M</strong> risk reduction · '
+    f'BCR <strong>{scen_opt["bcr"]:.2f}x</strong></div>',
+    unsafe_allow_html=True,
+)
 
 
 # ════════════════════════════════════════════════════════════════════════════════
@@ -337,9 +733,10 @@ with tab1:
                               line_color="#999", annotation_text="Median Risk Red.")
         fig_scatter.update_layout(
             margin=dict(l=10, r=10, t=10, b=40),
-            paper_bgcolor="white", plot_bgcolor="white",
-            xaxis=dict(gridcolor="#eee"),
-            yaxis=dict(gridcolor="#eee"),
+            paper_bgcolor="white", plot_bgcolor="#FAFBFC",
+            font=dict(family="Source Sans 3, sans-serif", color=BODY),
+            xaxis=dict(gridcolor=RULE),
+            yaxis=dict(gridcolor=RULE),
             legend=dict(orientation="h", yanchor="bottom", y=-0.30,
                         xanchor="left", x=0),
         )
@@ -370,8 +767,8 @@ with tab1:
             name="Avg BCR", x=cat_summary["category"],
             y=cat_summary["Avg_BCR"],
             mode="markers+lines",
-            marker=dict(size=10, color="#1F3864"),
-            line=dict(color="#1F3864", width=2),
+            marker=dict(size=10, color=NAVY),
+            line=dict(color=NAVY, width=2),
             yaxis="y2",
         ))
         fig_cat.update_layout(
@@ -392,7 +789,7 @@ with tab1:
                    .mean().sort_values().reset_index())
         fig_cpc = go.Figure(go.Bar(
             x=reg_cpc["cost_per_customer"], y=reg_cpc["region"],
-            orientation="h", marker_color="#1F3864",
+            orientation="h", marker_color=NAVY,
             text=[f"${v:.0f}" for v in reg_cpc["cost_per_customer"]],
             textposition="outside",
         ))
@@ -439,90 +836,30 @@ with tab1:
 with tab2:
 
     st.markdown(
-        "Compare three investment scenarios: **Do Nothing**, **Optimized Portfolio** "
-        "(maximize risk reduction within budget), and **Regulatory Minimum** "
-        "(fund only required projects)."
+        '<div class="sec-lbl">Scenario builder</div>'
+        '<div class="sec-sub">Compare three investment scenarios using the budget and objective '
+        'set in the sidebar: <strong>Do Nothing</strong>, <strong>Regulatory Minimum</strong>, '
+        'and <strong>Optimized Portfolio</strong>.</div>',
+        unsafe_allow_html=True,
     )
 
     col_b, col_p = st.columns([1, 2])
     with col_b:
-        scenario_budget = st.slider(
-            "Capital Budget ($M)",
-            min_value=5.0, max_value=200.0, value=50.0, step=5.0,
-        ) * 1e6
-
-        prioritize_by = st.radio(
-            "Optimization Objective",
-            ["Maximize Risk Reduction", "Maximize BCR", "Maximize Customers Protected"],
+        st.markdown(
+            f'<div class="formula-box">'
+            f'<strong>Active settings</strong><br>'
+            f'Capital budget: ${scenario_budget/1e6:.0f}M<br>'
+            f'Objective: {prioritize_by}<br>'
+            f'Include regulatory required: {"Yes" if include_reg else "No"}<br>'
+            f'Projects in optimized portfolio: {len(opt_ids)}'
+            f'</div>',
+            unsafe_allow_html=True,
         )
-
-        include_reg = st.checkbox("Always include regulatory-required projects", value=True)
-
-    # ── BUILD SCENARIOS ───────────────────────────────────────
-    # Greedy optimizer
-    def greedy_optimize(df_cand, budget, obj_col, budget_col="cost_usd"):
-        df_sorted = df_cand.sort_values(obj_col, ascending=False).copy()
-        selected, spent = [], 0
-        for _, row in df_sorted.iterrows():
-            if spent + row[budget_col] <= budget:
-                selected.append(row["project_id"])
-                spent += row[budget_col]
-        return selected
-
-    obj_map = {
-        "Maximize Risk Reduction":      "risk_per_dollar",
-        "Maximize BCR":                 "bcr",
-        "Maximize Customers Protected": "customers_protected",
-    }
-    obj_col = obj_map[prioritize_by]
-
-    # Scenario 1: Do Nothing
-    scen_nothing = {"name": "Do Nothing", "ids": [], "cost": 0,
-                    "risk_red": 0, "customers": 0, "bcr": 0}
-
-    # Scenario 2: Optimized
-    if include_reg:
-        reg_projects = dff[dff["regulatory_required"]].copy()
-        reg_cost = reg_projects["cost_usd"].sum()
-        remaining  = scenario_budget - reg_cost
-        opt_cand   = dff[~dff["regulatory_required"]].copy()
-        opt_ids    = reg_projects["project_id"].tolist()
-        if remaining > 0:
-            opt_ids += greedy_optimize(opt_cand, remaining, obj_col)
-    else:
-        opt_ids = greedy_optimize(dff, scenario_budget, obj_col)
-
-    opt_sel = dff[dff["project_id"].isin(opt_ids)]
-    scen_opt = {
-        "name":      "Optimized Portfolio",
-        "ids":       opt_ids,
-        "cost":      opt_sel["cost_usd"].sum(),
-        "risk_red":  opt_sel["risk_reduction_usd"].sum(),
-        "customers": opt_sel["customers_protected"].sum(),
-        "bcr":       (opt_sel["total_benefit_usd"].sum() /
-                      opt_sel["cost_usd"].sum()
-                      if opt_sel["cost_usd"].sum() > 0 else 0),
-    }
-
-    # Scenario 3: Regulatory Minimum
-    reg_sel  = dff[dff["regulatory_required"]]
-    scen_reg = {
-        "name":      "Regulatory Minimum",
-        "ids":       reg_sel["project_id"].tolist(),
-        "cost":      reg_sel["cost_usd"].sum(),
-        "risk_red":  reg_sel["risk_reduction_usd"].sum(),
-        "customers": reg_sel["customers_protected"].sum(),
-        "bcr":       (reg_sel["total_benefit_usd"].sum() /
-                      reg_sel["cost_usd"].sum()
-                      if reg_sel["cost_usd"].sum() > 0 else 0),
-    }
-
-    scenarios = [scen_nothing, scen_reg, scen_opt]
 
     # ── COMPARISON CHARTS ─────────────────────────────────────
     with col_p:
         scen_names  = [s["name"] for s in scenarios]
-        scen_colors = ["#bdbdbd", "#f57c00", "#1F3864"]
+        scen_colors = [MUTED, AMBER, NAVY]
 
         fig_comp = make_subplots(
             rows=1, cols=3,
@@ -540,7 +877,8 @@ with tab2:
             )
         fig_comp.update_layout(
             height=280, margin=dict(l=10, r=10, t=40, b=10),
-            paper_bgcolor="white", plot_bgcolor="white",
+            paper_bgcolor="white", plot_bgcolor="#FAFBFC",
+            font=dict(family="Source Sans 3, sans-serif", color=BODY),
         )
         for i in range(1, 4):
             fig_comp.update_xaxes(tickangle=-20, row=1, col=i)
@@ -553,34 +891,25 @@ with tab2:
     st.markdown('<div class="section-header">Scenario Comparison Summary</div>',
                 unsafe_allow_html=True)
 
-    comp_rows = []
-    baseline_risk = dff["risk_reduction_usd"].sum()
-    for s in scenarios:
-        roi  = (s["risk_red"] / s["cost"] * 100) if s["cost"] > 0 else 0
-        pct  = (s["risk_red"] / baseline_risk * 100) if baseline_risk > 0 else 0
-        comp_rows.append({
-            "Scenario":            s["name"],
-            "Projects Funded":     len(s["ids"]),
-            "Total Investment":    f"${s['cost']/1e6:.1f}M",
-            "Risk Reduction":      f"${s['risk_red']/1e6:.1f}M",
-            "% of Max Risk Red.":  f"{pct:.1f}%",
-            "Portfolio BCR":       f"{s['bcr']:.2f}x",
-            "ROI (Risk/Cost)":     f"{roi:.0f}%",
-            "Customers Protected": f"{s['customers']:,}",
-        })
+    comp_rows = _scenario_summary_rows(scenarios, dff)
     st.dataframe(pd.DataFrame(comp_rows), use_container_width=True, hide_index=True)
 
+    reg_pct = (
+        (scen_opt["risk_red"] / scen_reg["risk_red"] - 1) * 100
+        if scen_reg["risk_red"] > 0 else 0
+    )
+    cost_pct = (
+        (scen_opt["cost"] / scen_reg["cost"] - 1) * 100
+        if scen_reg["cost"] > 0 else 0
+    )
     st.markdown(
         f'<div class="insight-box">💡 <strong>Key Insight:</strong> '
         f'The optimized portfolio funds <strong>{len(scen_opt["ids"])} projects</strong> '
         f'for <strong>${scen_opt["cost"]/1e6:.1f}M</strong>, delivering '
         f'<strong>${scen_opt["risk_red"]/1e6:.1f}M</strong> in risk reduction '
         f'(BCR: <strong>{scen_opt["bcr"]:.2f}x</strong>). '
-        f'This is <strong>'
-        f'{(scen_opt["risk_red"]/scen_reg["risk_red"] - 1)*100:.0f}% more risk reduction'
-        f'</strong> than the regulatory minimum at '
-        f'<strong>'
-        f'{(scen_opt["cost"]/scen_reg["cost"] - 1)*100:.0f}% higher cost</strong>.'
+        f'This is <strong>{reg_pct:.0f}% more risk reduction</strong> than the regulatory minimum at '
+        f'<strong>{cost_pct:.0f}% higher cost</strong>.'
         f'</div>',
         unsafe_allow_html=True
     )
@@ -699,7 +1028,7 @@ with tab3:
     fig_front.add_trace(go.Scatter(
         x=frontier_x, y=frontier_y,
         mode="lines+markers",
-        line=dict(color="#1F3864", width=2.5),
+        line=dict(color=NAVY, width=2.5),
         marker=dict(size=6, color=frontier_n,
                     colorscale="Blues", showscale=True,
                     colorbar=dict(title="# Projects")),
@@ -713,7 +1042,7 @@ with tab3:
     cur_rr   = opt_sel["risk_reduction_usd"].sum() / 1e6
     fig_front.add_trace(go.Scatter(
         x=[cur_cost], y=[cur_rr], mode="markers",
-        marker=dict(size=14, color="#d32f2f", symbol="star"),
+        marker=dict(size=14, color=RED, symbol="star"),
         name=f"Selected Budget (${scenario_budget/1e6:.0f}M)",
     ))
     fig_front.update_layout(
@@ -820,7 +1149,7 @@ with tab4:
             fig_mc_bcr = go.Figure()
             fig_mc_bcr.add_trace(go.Histogram(
                 x=mc_results["sim_bcr"], nbinsx=50,
-                marker_color="#1F3864", opacity=0.75, name="Simulated BCR",
+                marker_color=NAVY, opacity=0.75, name="Simulated BCR",
             ))
             fig_mc_bcr.add_vline(x=base_bcr, line_dash="solid",
                                  line_color="#d32f2f", line_width=2,
@@ -912,3 +1241,15 @@ with tab4:
         )
     else:
         st.info("Select at least one project above to run the simulation.")
+
+# ── FOOTER ────────────────────────────────────────────────────────────────────
+st.markdown(
+    f'<div class="byline">'
+    f'<strong style="color:{GOLD};">Grid Investment Prioritization Engine</strong> · '
+    f'Benefit-cost optimization for utility infrastructure capital decisions.<br>'
+    f'Built by <a href="https://poverty360.org">Sherriff Abdul-Hamid</a> · '
+    f'Download the executive brief from the report card above the tabs.<br>'
+    f'Methodology: CPUC Risk-Based Decision-Making (RBDM) · Simulated SoCal utility portfolio.'
+    f'</div>',
+    unsafe_allow_html=True,
+)
